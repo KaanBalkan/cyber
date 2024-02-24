@@ -1,0 +1,14 @@
+{
+  "index.tsx -> agora-rtc-sdk-ng": {
+    "id": "index.tsx -> agora-rtc-sdk-ng",
+    "files": [
+      "static/chunks/node_modules_agora-rtc-sdk-ng_AgoraRTC_N-production_js.js"
+    ]
+  },
+  "index.tsx -> agora-rtm-sdk": {
+    "id": "index.tsx -> agora-rtm-sdk",
+    "files": [
+      "static/chunks/node_modules_agora-rtm-sdk_index_js.js"
+    ]
+  }
+}
