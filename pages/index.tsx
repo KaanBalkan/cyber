@@ -286,7 +286,7 @@ export default function Home() {
                 </div>
                 
               </div>
-              <button className="next-button" onClick={handleNextClick}>Next</button>
+              <button className="next-button" onClick={handleNextClick}>Next Button</button>
              room id: {room._id} status: {room.status}
 
             
