@@ -95,6 +95,13 @@ async function connectToAgoraRtc(
     userId
   );
 
+  client.on("user-left", async (user) => {
+    console.log(`User left: ${user.uid}`);
+    // Call function to set room status to waiting
+    await setRoomToWaiting(roomId);
+    // Optionally, you can also notify the remaining user or perform other cleanup actions here
+  });
+
   client.on("user-published", (themUser, mediaType) => {
     client.subscribe(themUser, mediaType).then(() => {
       if (mediaType === "video") {
@@ -154,24 +161,6 @@ export default function Home() {
   useEffect(() => {
     connectToARoom(); // Automatically start chatting when component mounts
   }, []); // Empty dependency array to run only once on mount
-
-  const handleUserLeaving = async () => {
-    if (room) {
-      // Replace with the correct API endpoint and method
-      await fetch(`/api/rooms/${room._id}/leave`, { method: "POST" });
-    }
-  };
-
-  // Set up beforeunload event listener
-  useEffect(() => {
-    window.addEventListener('beforeunload', handleUserLeaving);
-
-    // Clean up the event listener
-    return () => {
-      window.removeEventListener('beforeunload', handleUserLeaving);
-    };
-  }, [room]); // Dependency array includes room to update if it changes
-
 
   function handleNextClick() {
     connectToARoom();
