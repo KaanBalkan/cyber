@@ -1,16 +1,7 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const RoomSchema = new mongoose.Schema({
-  status: {
-    type: String,
-    required: true
-  },
-  participantCount: {
-    type: Number,
-    default: 0
-  }
-  // You can add other fields here if needed
+  status: String,
 });
 
-// Ensure the model is not overwritten if it already exists
-export default mongoose.models.Room || mongoose.model('Room', RoomSchema);
+export default mongoose.models.Room || mongoose.model("Room", RoomSchema);

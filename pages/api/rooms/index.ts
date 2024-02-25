@@ -66,20 +66,11 @@ export default async function handler(
           { $match: { status: "waiting" } },
           { $sample: { size: 1 } },
         ]);
-
         if (rooms.length > 0) {
           const roomId = rooms[0]._id.toString();
-          const updatedRoom = await Room.findByIdAndUpdate(
-            roomId, 
-            { $inc: { participantCount: 1 } },
-            { new: true }
-          );
-
-          if (updatedRoom.participantCount === 2) {
-            updatedRoom.status = "chatting";
-            await updatedRoom.save();
-          }
-
+          await Room.findByIdAndUpdate(roomId, {
+            status: "chatting",
+          });
           res.status(200).json({
             rooms,
             rtcToken: getRtcToken(roomId, userId),
@@ -93,45 +84,17 @@ export default async function handler(
       }
       break;
     case "POST":
-      try {
-        const room = await Room.create({
-          status: "waiting",
-          participantCount: 1, // Set initial participant count to 1
-        });
-
-        res.status(200).json({
-          room,
-          rtcToken: getRtcToken(room._id.toString(), userId),
-          rtmToken: getRtmToken(userId),
-        });
-      } catch (error) {
-        res.status(400).json((error as any).message);
-      }
+      const room = await Room.create({
+        status: "waiting",
+      });
+      res.status(200).json({
+        room,
+        rtcToken: getRtcToken(room._id.toString(), userId),
+        rtmToken: getRtmToken(userId),
+      });
       break;
-      case "PUT":
-  try {
-    const { roomId } = req.query;
-    const room = await Room.findByIdAndUpdate(
-      roomId,
-      { $inc: { participantCount: -1 } },
-      { new: true }
-    );
-
-    if (room.participantCount === 0) {
-      room.status = "waiting";
-      await room.save();
-    }
-
-    res.status(200).json(room);
-  } catch (error) {
-    res.status(400).json((error as any).message);
-  }
-  break;
-    // ... other cases ...
-
     default:
       res.status(400).json("no method for this endpoint");
       break;
   }
 }
-
