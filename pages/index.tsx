@@ -133,6 +133,7 @@ async function connectToAgoraRtm(
     uid: userId,
     token,
   });
+  
   const channel = await client.createChannel(roomId);
   await channel.join();
   channel.on("ChannelMessage", (message, userId) => {
@@ -140,6 +141,16 @@ async function connectToAgoraRtm(
       userId,
       message: message.text,
     });
+  });
+
+  client.on("ConnectionStateChanged", async (newState, reason) => {
+    console.log(`Connection state changed: ${newState}, reason: ${reason}`);
+    if (newState === "DISCONNECTED" || newState === "ABORTED") {
+      // Update room status to "empty" when disconnected
+      await fetch(`/api/rooms/${roomId}/leave`, { method: "PUT" })
+        .then(response => response.json())
+        .then(data => console.log(data));
+    }
   });
 
   return {

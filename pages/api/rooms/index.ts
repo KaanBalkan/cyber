@@ -54,26 +54,31 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<any>
 ) {
-  const { method, query } = req;
+  const { method, query, body } = req;
   const userId = query.userId as string;
 
   await dbConnect();
 
-  switch (method) {
-    case "GET":
+  switch ( method ) {
+    case "GET": // Joining a room
       try {
         const rooms = await Room.aggregate([
           { $match: { status: "waiting" } },
           { $sample: { size: 1 } },
         ]);
         if (rooms.length > 0) {
-          const roomId = rooms[0]._id.toString();
-          await Room.findByIdAndUpdate(roomId, {
-            status: "chatting",
-          });
+          const room = rooms[0];
+          const updatedRoom = await Room.findByIdAndUpdate(
+            room._id,
+            {
+              $inc: { userCount: 1 },
+              status: (room.userCount + 1 === 1) ? 'waiting' : 'chatting'
+            },
+            { new: true }
+          );
           res.status(200).json({
-            rooms,
-            rtcToken: getRtcToken(roomId, userId),
+            room: updatedRoom,
+            rtcToken: getRtcToken(room._id.toString(), userId),
             rtmToken: getRtmToken(userId),
           });
         } else {
@@ -84,17 +89,33 @@ export default async function handler(
       }
       break;
     case "POST":
-      const room = await Room.create({
-        status: "waiting",
-      });
-      res.status(200).json({
-        room,
-        rtcToken: getRtcToken(room._id.toString(), userId),
-        rtmToken: getRtmToken(userId),
-      });
+      if (body.action === 'create') {
+        // Creating a new room
+        const room = await Room.create({ status: "waiting", userCount: 1 });
+        res.status(200).json({
+          room,
+          rtcToken: getRtcToken(room._id.toString(), userId),
+          rtmToken: getRtmToken(userId),
+        });
+      } else if (body.action === 'leave') {
+        // Leaving a room
+        const roomId = body.roomId;
+        const room = await Room.findById(roomId);
+        const updatedRoom = await Room.findByIdAndUpdate(
+          roomId,
+          {
+            $inc: { userCount: -1 },
+            status: (room.userCount - 1 <= 0) ? 'empty' : 'waiting'
+          },
+          { new: true }
+        );
+        res.status(200).json({ message: 'Left room', room: updatedRoom });
+      } else {
+        res.status(400).json("Invalid action");
+      }
       break;
     default:
-      res.status(400).json("no method for this endpoint");
+      res.status(400).json("No method for this endpoint");
       break;
   }
 }
