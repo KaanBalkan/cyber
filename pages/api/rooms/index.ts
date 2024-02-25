@@ -108,6 +108,25 @@ export default async function handler(
         res.status(400).json((error as any).message);
       }
       break;
+      case "PUT":
+  try {
+    const { roomId } = req.query;
+    const room = await Room.findByIdAndUpdate(
+      roomId,
+      { $inc: { participantCount: -1 } },
+      { new: true }
+    );
+
+    if (room.participantCount === 0) {
+      room.status = "waiting";
+      await room.save();
+    }
+
+    res.status(200).json(room);
+  } catch (error) {
+    res.status(400).json((error as any).message);
+  }
+  break;
     // ... other cases ...
 
     default:

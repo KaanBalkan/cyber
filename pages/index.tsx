@@ -97,10 +97,10 @@ async function connectToAgoraRtc(
 
   client.on("user-left", async (user) => {
     console.log(`User left: ${user.uid}`);
-    // Call function to set room status to waiting
-    await setRoomToWaiting(roomId);
-    // Optionally, you can also notify the remaining user or perform other cleanup actions here
+    await fetch(`/api/rooms/${roomId}`, { method: "PUT" });
+    // Optionally, handle other cleanup actions
   });
+  
 
   client.on("user-published", (themUser, mediaType) => {
     client.subscribe(themUser, mediaType).then(() => {
