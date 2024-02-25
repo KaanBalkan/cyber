@@ -83,18 +83,37 @@ export default async function handler(
         res.status(400).json((error as any).message);
       }
       break;
-    case "POST":
-      const room = await Room.create({
-        status: "waiting",
-      });
-      res.status(200).json({
-        room,
-        rtcToken: getRtcToken(room._id.toString(), userId),
-        rtmToken: getRtmToken(userId),
-      });
-      break;
-    default:
-      res.status(400).json("no method for this endpoint");
-      break;
+      case "POST":
+        if (req.url?.endsWith("/leave")) {
+          // ... logic for handling leave request ...
+        } else {
+          // Handle creating a new room
+          try {
+            const newRoom = await Room.create({
+              status: "waiting",
+              // Add any other initial room properties here
+              activeUsers: 1 // Assuming 1 active user when the room is created
+            });
+  
+            // Generate tokens for RTC and RTM
+            const rtcToken = getRtcToken(newRoom._id.toString(), userId);
+            const rtmToken = getRtmToken(userId);
+  
+            res.status(200).json({
+              room: newRoom,
+              rtcToken: rtcToken,
+              rtmToken: rtmToken
+            });
+          } catch (error) {
+            res.status(400).json((error as any).message);
+          }
+        }
+        break;
+  
+      // ... (other cases if any) ...
+  
+      default:
+        res.status(400).json("no method for this endpoint");
+        break;
+    }
   }
-}

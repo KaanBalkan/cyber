@@ -155,6 +155,24 @@ export default function Home() {
     connectToARoom(); // Automatically start chatting when component mounts
   }, []); // Empty dependency array to run only once on mount
 
+  const handleUserLeaving = async () => {
+    if (room) {
+      // Replace with the correct API endpoint and method
+      await fetch(`/api/rooms/${room._id}/leave`, { method: "POST" });
+    }
+  };
+
+  // Set up beforeunload event listener
+  useEffect(() => {
+    window.addEventListener('beforeunload', handleUserLeaving);
+
+    // Clean up the event listener
+    return () => {
+      window.removeEventListener('beforeunload', handleUserLeaving);
+    };
+  }, [room]); // Dependency array includes room to update if it changes
+
+
   function handleNextClick() {
     connectToARoom();
   }

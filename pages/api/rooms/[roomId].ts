@@ -61,11 +61,21 @@ export default async function handler(
 
   switch (method) {
     case "PUT":
-      await Room.findByIdAndUpdate(roomId, {
-        status: "waiting",
-      });
-      res.status(200).json("success");
+      // Retrieve the room
+      const room = await Room.findById(roomId);
+
+      if (room) {
+        // Update the active user count and room status
+        room.activeUsers = (room.activeUsers || 0) + 1; // Increment active users
+        room.status = "occupied"; // Update the status as required
+
+        await room.save();
+        res.status(200).json({ message: "Joined the room successfully." });
+      } else {
+        res.status(404).json({ message: "Room not found." });
+      }
       break;
+
     default:
       res.status(400).json("no method for this endpoint");
       break;
