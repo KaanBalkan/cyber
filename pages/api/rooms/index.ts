@@ -5,6 +5,8 @@ import { RtcTokenBuilder, RtcRole } from "agora-access-token";
 import { RtmTokenBuilder, RtmRole } from "agora-access-token";
 import Room from "../../../models/Room";
 
+const MAX_USERS = 2;
+
 type Room = {
   status: String;
 };
@@ -84,36 +86,67 @@ export default async function handler(
       }
       break;
       case "POST":
-        if (req.url?.endsWith("/leave")) {
-          // ... logic for handling leave request ...
-        } else {
-          // Handle creating a new room
-          try {
-            const newRoom = await Room.create({
-              status: "waiting",
-              // Add any other initial room properties here
-              activeUsers: 1 // Assuming 1 active user when the room is created
-            });
-  
-            // Generate tokens for RTC and RTM
-            const rtcToken = getRtcToken(newRoom._id.toString(), userId);
-            const rtmToken = getRtmToken(userId);
-  
-            res.status(200).json({
-              room: newRoom,
-              rtcToken: rtcToken,
-              rtmToken: rtmToken
-            });
-          } catch (error) {
-            res.status(400).json((error as any).message);
-          }
+  if (req.url?.endsWith("/leave")) {
+    // Logic for handling leave request
+    try {
+      const roomId = req.body.roomId; // Assuming the room ID is passed in the request body
+      const room = await Room.findById(roomId);
+      if (room) {
+        room.activeUsers -= 1;
+        if (room.activeUsers === 0) {
+          room.status = "empty"; // Update the status if the room is empty
         }
-        break;
-  
-      // ... (other cases if any) ...
-  
-      default:
-        res.status(400).json("no method for this endpoint");
-        break;
+        await room.save();
+
+        res.status(200).json({ message: "Left the room successfully" });
+      } else {
+        res.status(404).json("Room not found");
+      }
+    } catch (error) {
+      res.status(500).json((error as any).message);
+    }
+  } else {
+    // Handle creating a new room or joining an existing one
+    try {
+      let room = await Room.findOne({ status: "waiting" });
+      if (!room) {
+        room = await Room.create({
+          status: "waiting",
+          activeUsers: 1 // New room with 1 active user
+        });
+      } else {
+        // Check if the room is not full
+        if (room.activeUsers < MAX_USERS) {
+          room.activeUsers += 1;
+          await room.save();
+        } else {
+          // Create a new room if the existing one is full
+          room = await Room.create({
+            status: "waiting",
+            activeUsers: 1
+          });
+        }
+      }
+
+      // Generate tokens for RTC and RTM
+      const rtcToken = getRtcToken(room._id.toString(), userId);
+      const rtmToken = getRtmToken(userId);
+
+      res.status(200).json({
+        room: room,
+        rtcToken: rtcToken,
+        rtmToken: rtmToken
+      });
+    } catch (error) {
+      res.status(500).json((error as any).message);
     }
   }
+  break;
+
+// ... (other cases if any) ...
+
+default:
+  res.status(400).json("no method for this endpoint");
+  break;
+}
+}
