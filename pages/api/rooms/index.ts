@@ -59,7 +59,7 @@ export default async function handler(
 
   await dbConnect();
 
-  switch ( method ) {
+  switch (method) {
     case "GET": // Joining a room
       try {
         const rooms = await Room.aggregate([
@@ -72,6 +72,7 @@ export default async function handler(
             room._id,
             {
               $inc: { userCount: 1 },
+              $push: { users: userId }, // Add the userId to the users array
               status: (room.userCount + 1 === 1) ? 'waiting' : 'chatting'
             },
             { new: true }
@@ -91,7 +92,11 @@ export default async function handler(
     case "POST":
       if (body.action === 'create') {
         // Creating a new room
-        const room = await Room.create({ status: "waiting", userCount: 1 });
+        const room = await Room.create({
+          status: "waiting",
+          userCount: 1,
+          users: [userId] // Initialize with the creator's userId
+        });
         res.status(200).json({
           room,
           rtcToken: getRtcToken(room._id.toString(), userId),
@@ -105,6 +110,7 @@ export default async function handler(
           roomId,
           {
             $inc: { userCount: -1 },
+            $pull: { users: userId }, // Remove the userId from the users array
             status: (room.userCount - 1 <= 0) ? 'empty' : 'waiting'
           },
           { new: true }
