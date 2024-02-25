@@ -66,11 +66,20 @@ export default async function handler(
           { $match: { status: "waiting" } },
           { $sample: { size: 1 } },
         ]);
+
         if (rooms.length > 0) {
           const roomId = rooms[0]._id.toString();
-          await Room.findByIdAndUpdate(roomId, {
-            status: "chatting",
-          });
+          const updatedRoom = await Room.findByIdAndUpdate(
+            roomId, 
+            { $inc: { participantCount: 1 } },
+            { new: true }
+          );
+
+          if (updatedRoom.participantCount === 2) {
+            updatedRoom.status = "chatting";
+            await updatedRoom.save();
+          }
+
           res.status(200).json({
             rooms,
             rtcToken: getRtcToken(roomId, userId),
@@ -84,17 +93,26 @@ export default async function handler(
       }
       break;
     case "POST":
-      const room = await Room.create({
-        status: "waiting",
-      });
-      res.status(200).json({
-        room,
-        rtcToken: getRtcToken(room._id.toString(), userId),
-        rtmToken: getRtmToken(userId),
-      });
+      try {
+        const room = await Room.create({
+          status: "waiting",
+          participantCount: 1, // Set initial participant count to 1
+        });
+
+        res.status(200).json({
+          room,
+          rtcToken: getRtcToken(room._id.toString(), userId),
+          rtmToken: getRtmToken(userId),
+        });
+      } catch (error) {
+        res.status(400).json((error as any).message);
+      }
       break;
+    // ... other cases ...
+
     default:
       res.status(400).json("no method for this endpoint");
       break;
   }
 }
+
