@@ -12,7 +12,7 @@ export default async function checkForInactiveRooms(req, res) {
     lastActive: { $lt: new Date(now.getTime() - TIMEOUT) },
   });
   for (const room of rooms) {
-    await Room.findByIdAndUpdate(room._id, {
+    await Room.findByIdAndUpdate(Room._id, {
       status: "timed out",
     });
   }
