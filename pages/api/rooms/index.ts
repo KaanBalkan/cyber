@@ -93,17 +93,6 @@ export default async function handler(
         rtmToken: getRtmToken(userId),
       });
       break;
-    case "PUT":
-      try {
-        const roomId = query.roomId as string;
-        await Room.findByIdAndUpdate(roomId, {
-          lastActive: new Date(),
-        });
-        res.status(200).json({ message: "Room lastActive updated successfully" });
-      } catch (error) {
-        res.status(400).json((error as any).message);
-      }
-      break;
     default:
       res.status(400).json("no method for this endpoint");
       break;

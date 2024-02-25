@@ -95,6 +95,13 @@ async function connectToAgoraRtc(
     userId
   );
 
+  client.on("user-left", async (user) => {
+    console.log(`User left: ${user.uid}`);
+    // Call function to set room status to waiting
+    await setRoomToWaiting(roomId);
+    // Optionally, you can also notify the remaining user or perform other cleanup actions here
+  });
+
   client.on("user-published", (themUser, mediaType) => {
     client.subscribe(themUser, mediaType).then(() => {
       if (mediaType === "video") {
@@ -176,10 +183,6 @@ export default function Home() {
       },
     ]);
     setInput("");
-    // Update lastActive field
-    if (room) {
-      await fetch(`/api/rooms/${room._id}/active`, { method: "PUT" });
-    }
   }
 
   async function connectToARoom() {
@@ -187,21 +190,21 @@ export default function Home() {
     setThemVideo(undefined);
     setMyVideo(undefined);
     setMessages([]);
-  
+
     if (channelRef.current) {
       await channelRef.current.leave();
     }
-  
+
     if (rtcClientRef.current) {
       rtcClientRef.current.leave();
     }
-  
+
     const { rooms, rtcToken, rtmToken } = await getRandomRoom(userId);
-  
+
     if (room) {
       setRoomToWaiting(room._id);
     }
-  
+
     if (rooms.length > 0) {
       setRoom(rooms[0]);
       const { channel } = await connectToAgoraRtm(
@@ -211,7 +214,7 @@ export default function Home() {
         rtmToken
       );
       channelRef.current = channel;
-  
+
       const { tracks, client } = await connectToAgoraRtc(
         rooms[0]._id,
         userId,
@@ -221,9 +224,6 @@ export default function Home() {
         rtcToken
       );
       rtcClientRef.current = client;
-  
-      // Update lastActive field
-      await fetch(`/api/rooms/${rooms[0]._id}/active`, { method: "PUT" });
     } else {
       const { room, rtcToken, rtmToken } = await createRoom(userId);
       setRoom(room);
@@ -234,7 +234,7 @@ export default function Home() {
         rtmToken
       );
       channelRef.current = channel;
-  
+
       const { tracks, client } = await connectToAgoraRtc(
         room._id,
         userId,
@@ -244,9 +244,6 @@ export default function Home() {
         rtcToken
       );
       rtcClientRef.current = client;
-  
-      // Update lastActive field
-      await fetch(`/api/rooms/${room._id}/active`, { method: "PUT" });
     }
   }
 
