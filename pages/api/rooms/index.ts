@@ -61,31 +61,44 @@ export default async function handler(
 
   switch (method) {
     case "GET":
-      try {
-        const rooms = await Room.aggregate([
-          { $match: { status: "waiting" } },
-          { $sample: { size: 1 } },
-        ]);
-        if (rooms.length > 0) {
-          const roomId = rooms[0]._id.toString();
-          await Room.findByIdAndUpdate(roomId, {
-            status: "chatting",
-          });
-          res.status(200).json({
-            rooms,
-            rtcToken: getRtcToken(roomId, userId),
-            rtmToken: getRtmToken(userId),
-          });
-        } else {
-          res.status(200).json({ rooms: [], token: null });
+  try {
+    const rooms = await Room.aggregate([
+      { $match: { status: "waiting" } },
+      { $sample: { size: 1 } },
+    ]);
+
+    if (rooms.length > 0) {
+      const roomId = rooms[0]._id.toString();
+
+      // Find the room (Modify this based on how you track user-room association)
+      const roomToUpdate = await Room.findById(roomId); 
+
+      if (roomToUpdate) {
+        roomToUpdate.connectedUsers = roomToUpdate.connectedUsers.filter(id => id !== userId); 
+
+        // If no more users are connected, update to 'waiting'
+        if (roomToUpdate.connectedUsers.length === 0) {
+          roomToUpdate.status = 'waiting'; 
         }
-      } catch (error) {
-        res.status(400).json((error as any).message);
+        await roomToUpdate.save();
       }
-      break;
+
+      res.status(200).json({
+        rooms,
+        rtcToken: getRtcToken(roomId, userId),
+        rtmToken: getRtmToken(userId),
+      });
+    } else {
+      res.status(200).json({ rooms: [], token: null });
+    }
+  } catch (error) {
+    res.status(400).json((error as any).message);
+  }
+  break;
     case "POST":
       const room = await Room.create({
         status: "waiting",
+        connectedUsers: [userId],
       });
       res.status(200).json({
         room,

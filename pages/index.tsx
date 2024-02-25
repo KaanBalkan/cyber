@@ -43,7 +43,7 @@ function getRandomRoom(userId: string): Promise<TGetRandomRoomResponse> {
   );
 }
 
-function setRoomToWaiting(roomId: string) {
+export function setRoomToWaiting(roomId: string) {
   return fetch(`/api/rooms/${roomId}`, { method: "PUT" }).then((response) =>
     response.json()
   );
@@ -97,9 +97,16 @@ async function connectToAgoraRtc(
 
   client.on("user-left", async (user) => {
     console.log(`User left: ${user.uid}`);
-    // Call function to set room status to waiting
+
+    // Update room status (IMPORTANT: Make sure roomId is correct)
     await setRoomToWaiting(roomId);
-    // Optionally, you can also notify the remaining user or perform other cleanup actions here
+
+    // Optional: Notify remaining user via RTM
+  });
+
+  client.on("user-offline", async (user, reason) => {
+    // Similar logic as above for unexpected disconnects
+    await setRoomToWaiting(roomId); 
   });
 
   client.on("user-published", (themUser, mediaType) => {
