@@ -191,7 +191,10 @@ export default function Home() {
     setMyVideo(undefined);
     setMessages([]);
 
-    
+    let roomsResponse = await getRandomRoom(userId);
+    let createRoomResponse;
+    let roomToJoin;
+
     if (channelRef.current) {
       await channelRef.current.leave();
     }
@@ -200,27 +203,25 @@ export default function Home() {
       rtcClientRef.current.leave();
     }
 
-    let roomsResponse = await getRandomRoom(userId);
-    let createRoomResponse;
-    let roomToJoin;
-
     if (roomsResponse.rooms.length > 0) {
       // Join the first waiting room available
       roomToJoin = roomsResponse.rooms[0];
     } else {
       // No waiting room available, create a new one
-      let createRoomResponse = await createRoom(userId);
+      createRoomResponse = await createRoom(userId); // Corrected this line
       roomToJoin = createRoomResponse.room;
-    }
+    }    
 
     setRoom(roomToJoin);
 
+    const rtmToken = roomsResponse.rooms.length > 0 ? roomsResponse.rtmToken : createRoomResponse.rtmToken;
+
     const { channel } = await connectToAgoraRtm(
       roomToJoin._id,
-      userId,
-      (message: TMessage) => setMessages((cur) => [...cur, message]),
-      roomsResponse?.rtmToken || createRoomResponse.rtmToken
-  );
+     userId,
+     (message: TMessage) => setMessages((cur) => [...cur, message]),
+      rtmToken
+    );
     channelRef.current = channel;
 
     const { tracks, client } = await connectToAgoraRtc(
