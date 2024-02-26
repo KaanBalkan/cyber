@@ -191,6 +191,7 @@ export default function Home() {
     setMyVideo(undefined);
     setMessages([]);
 
+    
     if (channelRef.current) {
       await channelRef.current.leave();
     }
@@ -199,53 +200,63 @@ export default function Home() {
       rtcClientRef.current.leave();
     }
 
-    const { rooms, rtcToken, rtmToken } = await getRandomRoom(userId);
+    let roomsResponse = await getRandomRoom(userId);
+    let createRoomResponse;
+    let roomToJoin;
 
-    if (room) {
-      setRoomToWaiting(room._id);
-    }
-
-    if (rooms.length > 0) {
-      setRoom(rooms[0]);
-      const { channel } = await connectToAgoraRtm(
-        rooms[0]._id,
-        userId,
-        (message: TMessage) => setMessages((cur) => [...cur, message]),
-        rtmToken
-      );
-      channelRef.current = channel;
-
-      const { tracks, client } = await connectToAgoraRtc(
-        rooms[0]._id,
-        userId,
-        (themVideo: IRemoteVideoTrack) => setThemVideo(themVideo),
-        (myVideo: ICameraVideoTrack) => setMyVideo(myVideo),
-        (themAudio: IRemoteAudioTrack) => setThemAudio(themAudio),
-        rtcToken
-      );
-      rtcClientRef.current = client;
+    if (roomsResponse.rooms.length > 0) {
+      // Join the first waiting room available
+      roomToJoin = roomsResponse.rooms[0];
     } else {
-      const { room, rtcToken, rtmToken } = await createRoom(userId);
-      setRoom(room);
-      const { channel } = await connectToAgoraRtm(
-        room._id,
-        userId,
-        (message: TMessage) => setMessages((cur) => [...cur, message]),
-        rtmToken
-      );
-      channelRef.current = channel;
-
-      const { tracks, client } = await connectToAgoraRtc(
-        room._id,
-        userId,
-        (themVideo: IRemoteVideoTrack) => setThemVideo(themVideo),
-        (myVideo: ICameraVideoTrack) => setMyVideo(myVideo),
-        (themAudio: IRemoteAudioTrack) => setThemAudio(themAudio),
-        rtcToken
-      );
-      rtcClientRef.current = client;
+      // No waiting room available, create a new one
+      let createRoomResponse = await createRoom(userId);
+      roomToJoin = createRoomResponse.room;
     }
-  }
+
+    setRoom(roomToJoin);
+
+    const { channel } = await connectToAgoraRtm(
+      roomToJoin._id,
+      userId,
+      (message: TMessage) => setMessages((cur) => [...cur, message]),
+      roomsResponse?.rtmToken || createRoomResponse.rtmToken
+  );
+    channelRef.current = channel;
+
+    const { tracks, client } = await connectToAgoraRtc(
+      roomToJoin._id,
+      userId,
+      (themVideo: IRemoteVideoTrack) => setThemVideo(themVideo),
+      (myVideo: ICameraVideoTrack) => setMyVideo(myVideo),
+      (themAudio: IRemoteAudioTrack) => setThemAudio(themAudio),
+      roomsResponse.rtcToken || createRoomResponse.rtcToken
+    );
+    rtcClientRef.current = client;
+
+    // Delay for 2-3 seconds to check for another user
+    setTimeout(async () => {
+      if (themVideo || themAudio) {
+        // Another user detected, update room status to 'chatting'
+        await setRoomStatus(roomToJoin._id, 'chatting');
+        roomToJoin.status = 'chatting';
+        setRoom(roomToJoin);
+      } else {
+        // No other user detected, remain in 'waiting' status
+        await setRoomStatus(roomToJoin._id, 'waiting');
+      }
+    }, 2000); // 2 seconds delay
+}
+
+async function setRoomStatus(roomId, status) {
+  // Function to update room status on server
+  return fetch(`/api/rooms/${roomId}/status`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status }),
+  });
+}
 
   function convertToYouThem(message: TMessage) {
     return message.userId === userId ? "You" : "Them";
