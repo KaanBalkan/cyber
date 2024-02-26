@@ -256,7 +256,9 @@ async function setRoomStatus(roomId, status) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ status }),
-  });
+  })
+  .then(response => response.json()) // Ensure you handle the response
+  .catch(error => console.error('Error updating room status:', error)); // Handle any errors
 }
 
   function convertToYouThem(message: TMessage) {

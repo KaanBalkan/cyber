@@ -50,12 +50,17 @@ function getRtcToken(roomId: string, userId: string) {
   return token;
 }
 
+interface RequestBody {
+  status: string;
+}
+
 export default async function handler(
-  req: NextApiRequest,
+  req: NextApiRequest & { body: RequestBody }, // Explicitly type the body
   res: NextApiResponse<any>
 ) {
-  const { method, query } = req;
+  const { method, query, body } = req;
   const userId = query.userId as string;
+  const roomId = query.roomId as string; // Add this line to get roomId from query
 
   await dbConnect();
 
@@ -91,8 +96,33 @@ export default async function handler(
         rtmToken: getRtmToken(userId),
       });
       break;
-    default:
-      res.status(400).json("no method for this endpoint");
-      break;
+      case "PUT":
+        try {
+          // Assuming the new status is sent in the body of the request
+          const newStatus = body.status;
+          
+          if (!roomId || !newStatus) {
+            return res.status(400).json("Missing roomId or status");
+          }
+  
+          const updatedRoom = await Room.findByIdAndUpdate(
+            roomId,
+            { status: newStatus },
+            { new: true }
+          );
+  
+          if (!updatedRoom) {
+            return res.status(404).json("Room not found");
+          }
+  
+          res.status(200).json(updatedRoom);
+        } catch (error) {
+          res.status(400).json((error as any).message);
+        }
+        break;
+  
+      default:
+        res.status(400).json("No method for this endpoint");
+        break;
   }
 }
