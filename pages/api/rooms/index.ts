@@ -68,9 +68,7 @@ export default async function handler(
         ]);
         if (rooms.length > 0) {
           const roomId = rooms[0]._id.toString();
-          await Room.findByIdAndUpdate(roomId, {
-            status: "chatting",
-          });
+          // Removed the line that updates the status to "chatting"
           res.status(200).json({
             rooms,
             rtcToken: getRtcToken(roomId, userId),
